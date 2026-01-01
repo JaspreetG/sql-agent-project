@@ -1,0 +1,70 @@
+version: "3.8"
+
+services:
+  # 1. Database
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: company_db
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d company_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Main Ollama Server
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      # Check if server is reachable before pulling
+      test: "ollama list || exit 1"
+      interval: 10s
+      timeout: 30s
+      retries: 5
+      start_period: 10s
+
+  # 3. Model Puller (Downloads sqlcoder:7b automatically)
+  ollama-init:
+    image: ollama/ollama
+    # Link to the main server
+    environment:
+      - OLLAMA_HOST=ollama:11434
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: /bin/sh
+    command:
+      - "-c"
+      - "echo 'Waiting for Ollama...'; ollama pull sqlcoder:7b; ollama pull llama3; echo 'Done!'"
+
+  # 4. Your Python App
+  backend:
+    build: ./app
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://admin:password@db:5432/company_db
+      OLLAMA_BASE_URL: http://ollama:11434
+    depends_on:
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+      # Wait for the models to finish downloading
+      ollama-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./app:/code
+
+volumes:
+  ollama_data:

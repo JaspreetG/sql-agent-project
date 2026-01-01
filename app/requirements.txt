@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+langgraph
+langchain
+langchain_community
+langchain_postgres
+psycopg2-binary
+httpx
+pydantic
+sqlalchemy
