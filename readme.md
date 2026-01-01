@@ -214,8 +214,8 @@ erDiagram
 1. **Clone the repository**
 
 ```bash
-git clone https://github.com/yourusername/sql-agent-pro.git
-cd sql-agent-pro
+git clone https://github.com/JaspreetG/DataPilot.git
+cd DataPilot
 
 ```
 
